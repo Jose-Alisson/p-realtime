@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "allowSyntheticDefaultImports": true,
+        "moduleResolution": "Node",
+        "module": "ES2022",
+        "target": "ES2022",
+        "outDir": "./dist/js/",
+        "noEmitOnError": true
+    },
+    "include": [
+        "./src/**/*"
+    ]
+}

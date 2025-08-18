@@ -1,0 +1,30 @@
+{
+  "name": "p-realtime",
+  "version": "1.0.3",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon ./dist/js/main.js",
+    "start": "node ./dist/js/main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Alisson",
+  "license": "ISC",
+  "dependencies": {
+    "@stomp/stompjs": "^7.1.1",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "save": "^2.9.0",
+    "socket.io": "^4.8.1",
+    "stomp": "^0.1.1",
+    "websocket": "^1.0.35",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "nodemon": "^3.1.10",
+    "typescript": "^5.8.3"
+  }
+}
