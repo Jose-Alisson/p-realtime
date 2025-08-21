@@ -3,7 +3,7 @@ import express from 'express'
 import http from 'http'
 import { Server } from 'socket.io'
 import url from "url";
-import path from 'path'
+import path, { join } from 'path'
 import cors, { CorsOptions } from 'cors'
 import { WebSocket } from 'ws';
 import { Client } from '@stomp/stompjs'
@@ -17,7 +17,7 @@ const app = express()
 app.use(express.json());
 
 const caminhoAtual = url.fileURLToPath(import.meta.url);
-const diretorioPublico = path.join(caminhoAtual, "../../..", "public");
+const diretorioPublico = path.join(caminhoAtual, "..", "..", "..", "public");
 
 app.use(express.static(diretorioPublico));
 

@@ -20,38 +20,39 @@ function saveOrder(order: Order) {
             orders.push(order)
         }
         newOrders.push(order)
-        socketAuth.emitToRoles(['role_admin'], 'new_orders', newOrders)
-        socketAuth.emitToRoles(['role_admin'], 'notification', { title: 'Novo pedido', body: `Você tem ${newOrders.length} ainda não visualizadas` })
+        socketAuth.emitToRoles(['admin'], 'new_orders', newOrders)
+        socketAuth.emitToRoles(['admin'], 'notification', { title: 'Novo pedido', body: `Você tem ${newOrders.length} ainda não visualizadas` })
     }
 
-    socketAuth.emitToRoles(['role_admin'], 'orders', orders)
+    socketAuth.emitToRoles(['admin'], 'orders', orders)
 }
 
 function removerNewOrder(id: number) {
     let index = newOrders.findIndex(no => no.id === id)
     if (index != -1) {
         newOrders.splice(index, 1)
-        socketAuth.emitToRoles(['role_admin'], 'new_orders', newOrders)
+        socketAuth.emitToRoles(['admin'], 'new_orders', newOrders)
     }
 }
 
-stomp.onConnect = () => {
+function registerOrderStomp(){
     stomp.publish({
         destination: "/app/send/getOrders",
         body: JSON.stringify({ date: realtimeDate })
     });
-
+    
     stomp.subscribe('/topic/orders', (message) => {
         orders = JSON.parse(message.body)
-        socketAuth.emitToRoles(['role_admin'], 'orders', orders)
+        socketAuth.emitToRoles(['admin'], 'orders', orders)
     })
-
+    
     stomp.subscribe('/topic/order/add', (message) => {
         saveOrder(JSON.parse(message.body))
     })
+
 }
 
-socketAuth.onConnectByRole(['role_admin'], (socket: Socket) => {
+socketAuth.onConnectByRole(['admin'], (socket: Socket) => {
     socket.emit("current_date", realtimeDate)
     socket.emit("orders", orders)
     socket.emit("new_orders", newOrders)
@@ -61,10 +62,10 @@ socketAuth.onConnectByRole(['role_admin'], (socket: Socket) => {
 
 socketAuth.onSecure({
     eventName: 'set_current_date',
-    emitToRoles: ['role_admin'],
-    rolesAllowed: ['role_admin'],
+    emitToRoles: ['admin'],
+    rolesAllowed: ['admin'],
     handler: (socket, date) => {
-        const [ano, mes, dia] = "date".split('-').map(Number);
+        const [ano, mes, dia] = date.split('-').map(Number);
         realtimeDate = formatarData(new Date(ano, mes - 1, dia))
         // console.log(realtimeDate)
 
@@ -73,15 +74,21 @@ socketAuth.onSecure({
             body: JSON.stringify({ date: realtimeDate })
         });
 
-        socketAuth.emitToRoles(['role_admin'], 'current_date', realtimeDate)
+        socketAuth.emitToRoles(['admin'], 'current_date', realtimeDate)
     }
 })
 
 socketAuth.onSecure({
     eventName: 'remover_new_order',
-    emitToRoles: ['role_admin'],
-    rolesAllowed: ['role_admin'],
+    emitToRoles: ['admin'],
+    rolesAllowed: ['admin'],
     handler: (socket, id) => {
         removerNewOrder(id)
     }
 })
+
+
+export {
+    registerOrderStomp,
+    realtimeDate
+}

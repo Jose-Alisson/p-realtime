@@ -1,15 +1,15 @@
 import { Server, Socket } from "socket.io";
 
-function emitToRoles(io: Server, roles = [], eventName, data) {
-    if (!Array.isArray(roles)) {
-        roles = [roles]; // transforma em array automaticamente
+function emitToRoles(io: Server, authorities = [], eventName, data) {
+    if (!Array.isArray(authorities)) {
+        authorities = [authorities]; // transforma em array automaticamente
     }
 
     const sockets = Array.from(io.sockets.sockets.values());
 
     for (const socket of sockets) {
-        const role = socket.data.user?.role || 'guest';
-        if (roles.includes(role)) {
+        const authorities = socket.data.user?.authorities || ['guest'];
+        if (authorities.some(a => authorities.includes(a))) {
             socket.emit(eventName, data);
         }
     }
@@ -18,20 +18,44 @@ function emitToRoles(io: Server, roles = [], eventName, data) {
 function authSocketManager(io: Server) {
     const registeredEvents = [];
     const roleConnectHandlers = {}; // <-- NOVO
+    const roleDisconnectHandlers = {}
 
     io.on('connection', (socket: Socket) => {
-        const role = socket.data.user?.role || 'guest';
+        const authorities = socket.data.user?.authorities || ['guest'];
 
-        // Executa todas as funções registradas para a role do socket
-        const fns = roleConnectHandlers[role] || [];
-        fns.forEach(fn => fn(socket));
+        // // Executa todas as funções registradas para a role do socket
+        // const fns = roleConnectHandlers[authorities] || [];
+
+        const entries = Object.entries(roleConnectHandlers)
+        // entries.filter(([key, value]) => authorities.some((authority) => key === authority)).forEach(([key, fn]) => fn(socket))
+
+        let handles = entries.filter(([key, value]) => authorities.some((authoritie) => key === authoritie))
+            .map<any>(handle => {
+                return handle[1]
+            })
+        handles.forEach((handlers) => {
+            if (Array.isArray(handlers)) {
+                handlers.forEach(fn => fn(socket))
+            } else if (handlers instanceof Function) {
+                handlers(socket)
+            }
+        })
+
+        // fns.forEach(fn => fn(socket));
 
         // Registra handlers para este socket
+
+        // console.log(registeredEvents)
+
         for (const evt of registeredEvents) {
-            if (evt.rolesAllowed.includes(role)) {
+
+            if (evt.rolesAllowed.some(au => authorities.includes(au))) {
+
+                console.log(evt.eventName, evt.rolesAllowed)
+
                 socket.on(evt.eventName, async (...data) => {
                     // Proteção extra
-                    if (!evt.rolesAllowed.includes(socket.data.user?.role)) return;
+                    // if (!evt.rolesAllowed.includes(socket.data.user?.role)) return;
                     const result = await evt.handler(socket, ...data);
 
                     // if (evt.autoEmitToRoles) {
@@ -47,10 +71,24 @@ function authSocketManager(io: Server) {
             }
 
             // Adiciona socket à "sala do evento" se ele tiver permissão para receber
-            if (evt.emitToRoles?.includes(role)) {
+            if (evt.emitToRoles?.includes(authorities)) {
                 socket.join(evt.eventName);
             }
         }
+
+
+
+
+        socket.on('disconnect', () => {
+            const entries = Object.entries(roleDisconnectHandlers)
+
+            let handles = entries.filter(([key, value]) => authorities.some((authoritie) => key === authoritie)).map<any>(handle => handle[1])
+
+            handles.forEach(values => {
+                values.forEach(fn => fn(socket, socket.data.user.sub))
+            })
+        })
+
     });
 
     return {
@@ -68,14 +106,24 @@ function authSocketManager(io: Server) {
             emitToRoles(io, roles, eventName, data);
         },
 
-        /** <-- NOVO: dispara eventos ao conectar por role */
-        onConnectByRole: (roles, fn) => {
-            if (!Array.isArray(roles)) roles = [roles];
-            for (const role of roles) {
-                if (!roleConnectHandlers[role]) {
-                    roleConnectHandlers[role] = [];
+        onDesconnectByRole: (authorities, fn) => {
+            if (!Array.isArray(authorities)) authorities = [authorities];
+            for (const authoritie of authorities) {
+                if (!roleDisconnectHandlers[authoritie]) {
+                    roleDisconnectHandlers[authoritie] = [];
                 }
-                roleConnectHandlers[role].push(fn);
+                roleDisconnectHandlers[authoritie].push((fn));
+            }
+        },
+
+        /** <-- NOVO: dispara eventos ao conectar por role */
+        onConnectByRole: (authorities, fn) => {
+            if (!Array.isArray(authorities)) authorities = [authorities];
+            for (const authoritie of authorities) {
+                if (!roleConnectHandlers[authoritie]) {
+                    roleConnectHandlers[authoritie] = [];
+                }
+                roleConnectHandlers[authoritie].push(fn);
             }
         }
     };
